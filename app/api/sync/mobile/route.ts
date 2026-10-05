@@ -26,12 +26,25 @@ export async function GET(request: Request) {
       include: {
         studentVerification: true,
         sellerApplication: true,
+        sellerProfile: true,
+        college: true,
       },
     });
 
     if (!user) {
       return NextResponse.json({ found: false }, { headers: corsHeaders });
     }
+
+    const isStudentApproved =
+      user.studentVerificationStatus === "APPROVED" ||
+      user.studentVerificationStatus === "VERIFIED" ||
+      user.studentVerification?.status === "APPROVED" ||
+      user.studentVerification?.status === "VERIFIED";
+
+    const isSellerApproved =
+      user.role === "SELLER" ||
+      user.sellerApplication?.status === "APPROVED" ||
+      Boolean(user.sellerProfile?.isVerifiedSeller);
 
     return NextResponse.json(
       {
@@ -40,8 +53,17 @@ export async function GET(request: Request) {
         name: user.name,
         email: user.email,
         role: user.role,
-        studentVerificationStatus: user.studentVerificationStatus || "PENDING",
-        sellerApplicationStatus: user.sellerApplication?.status || "NONE",
+        studentVerificationStatus: isStudentApproved ? "APPROVED" : (user.studentVerificationStatus || "PENDING"),
+        sellerApplicationStatus: isSellerApproved ? "APPROVED" : (user.sellerApplication?.status || "NONE"),
+        canChooseRole: isStudentApproved,
+        college: user.college?.name || "",
+        rollNumber: user.studentVerification?.studentIdNumber || "",
+        department: user.studentVerification?.department || "",
+        graduationYear: user.studentVerification?.graduationYear || "2027",
+        businessName: user.sellerProfile?.displayName || user.name,
+        whatsappNumber: user.sellerProfile?.whatsappNumber || user.sellerApplication?.whatsappNumber || user.phone || "",
+        isVerifiedSeller: isSellerApproved,
+        isVerifiedStudent: isStudentApproved,
       },
       { headers: corsHeaders }
     );
@@ -241,6 +263,227 @@ export async function POST(request: Request) {
       );
 
       return NextResponse.json({ success: true, sellerApp }, { headers: corsHeaders });
+    }
+
+    // 4. SELECT / SWITCH ROLE (AFTER STUDENT VERIFICATION APPROVAL)
+    if (action === "SELECT_ROLE" || action === "CHOOSE_ROLE" || action === "SWITCH_ROLE") {
+      const { businessName, whatsappNumber, role: targetRoleRaw } = body;
+      const targetRole = targetRoleRaw === "SELLER" ? "SELLER" : "STUDENT";
+
+      const user = await prisma.user.findUnique({
+        where: { email: normalizedEmail },
+        include: { studentVerification: true, college: true, sellerProfile: true },
+      });
+
+      if (!user) {
+        return NextResponse.json({ error: "User not found" }, { status: 404, headers: corsHeaders });
+      }
+
+      // Update user role in database
+      const updatedUser = await prisma.user.update({
+        where: { id: user.id },
+        data: { role: targetRole },
+      });
+
+      let updatedSellerProfile = null;
+      if (targetRole === "SELLER") {
+        const storeName = businessName?.trim() || user.sellerProfile?.displayName || `${user.name}'s Campus Store`;
+        const phone = whatsappNumber?.trim() || user.phone || user.sellerProfile?.whatsappNumber || "";
+
+        updatedSellerProfile = await prisma.sellerProfile.upsert({
+          where: { userId: user.id },
+          update: {
+            displayName: storeName,
+            whatsappNumber: phone,
+            isVerifiedSeller: true,
+          },
+          create: {
+            userId: user.id,
+            displayName: storeName,
+            bio: `Verified student venture founded by ${user.name}.`,
+            whatsappNumber: phone,
+            isWhatsappPublic: true,
+            isVerifiedSeller: true,
+            rating: 5.0,
+            totalSales: 0,
+          },
+        });
+
+        // Ensure sellerApplication marked APPROVED
+        await prisma.sellerApplication.upsert({
+          where: { userId: user.id },
+          update: {
+            status: "APPROVED",
+            fullName: user.name,
+            whatsappNumber: phone,
+          },
+          create: {
+            userId: user.id,
+            fullName: user.name,
+            collegeName: user.college?.name || "Campus Community",
+            govtIdType: "STUDENT_VERIFIED_IDENTITY",
+            govtIdNumber: user.studentVerification?.studentIdNumber || "STUDENT-ID",
+            whatsappNumber: phone,
+            description: `Store: ${storeName}`,
+            productCategories: "Campus Store, Merchandise, Student Crafts",
+            status: "APPROVED",
+          },
+        });
+      }
+
+      // Broadcast lively to Admin App
+      broadcastSyncEvent(
+        "ROLE_SELECTED",
+        {
+          userId: user.id,
+          name: user.name,
+          email: user.email,
+          role: targetRole,
+          college: user.college?.name || "Campus",
+          businessName: targetRole === "SELLER" ? (businessName || user.name) : undefined,
+          whatsappNumber: whatsappNumber || user.phone,
+        },
+        user.id,
+        `Verified Candidate ${user.name} selected ${targetRole} mode${targetRole === "SELLER" ? ` (Store: ${businessName || user.name})` : ""}`
+      );
+
+      return NextResponse.json(
+        {
+          success: true,
+          user: updatedUser,
+          role: targetRole,
+          sellerProfile: updatedSellerProfile,
+          message: `Successfully switched to ${targetRole} mode!`,
+        },
+        { headers: corsHeaders }
+      );
+    }
+
+    // 5. UPDATE STUDENT OR SELLER DETAILS LIVELY TO ADMIN APP
+    if (action === "UPDATE_DETAILS" || action === "UPDATE_PROFILE") {
+      const {
+        name: updatedName,
+        college: updatedCollege,
+        rollNumber,
+        department,
+        departmentYear,
+        graduationYear,
+        phone,
+        whatsappNumber,
+        businessName,
+        bio,
+        role: updatedRole,
+      } = body;
+
+      const user = await prisma.user.findUnique({
+        where: { email: normalizedEmail },
+        include: { studentVerification: true, sellerProfile: true, college: true },
+      });
+
+      if (!user) {
+        return NextResponse.json({ error: "User not found" }, { status: 404, headers: corsHeaders });
+      }
+
+      // Update college if new
+      let resolvedCollegeId = user.collegeId;
+      if (updatedCollege && updatedCollege.trim() && updatedCollege !== user.college?.name) {
+        const domain = `${updatedCollege.toLowerCase().replace(/[^a-z0-9]/g, "")}.edu`;
+        const col = await prisma.college.upsert({
+          where: { domain },
+          update: { name: updatedCollege.trim() },
+          create: {
+            name: updatedCollege.trim(),
+            domain,
+            city: "Campus City",
+            state: "State",
+            country: "India",
+          },
+        });
+        resolvedCollegeId = col.id;
+      }
+
+      // Update User
+      const updatedUser = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          name: updatedName || user.name,
+          phone: phone || user.phone,
+          collegeId: resolvedCollegeId,
+          role: updatedRole ? (updatedRole === "SELLER" ? "SELLER" : "STUDENT") : user.role,
+        },
+      });
+
+      // Update StudentVerification if student details present
+      let updatedVerification = null;
+      if (rollNumber || department || departmentYear || graduationYear) {
+        updatedVerification = await prisma.studentVerification.upsert({
+          where: { userId: user.id },
+          update: {
+            studentIdNumber: rollNumber || undefined,
+            department: department || departmentYear || undefined,
+            graduationYear: graduationYear || undefined,
+            collegeId: resolvedCollegeId,
+          },
+          create: {
+            userId: user.id,
+            studentIdNumber: rollNumber || "Pending-Roll",
+            department: department || departmentYear || "General",
+            graduationYear: graduationYear || "2027",
+            collegeId: resolvedCollegeId,
+            status: user.studentVerificationStatus || "PENDING",
+          },
+        });
+      }
+
+      // Update SellerProfile if seller details present
+      let updatedSeller = null;
+      if (businessName || whatsappNumber || bio) {
+        updatedSeller = await prisma.sellerProfile.upsert({
+          where: { userId: user.id },
+          update: {
+            displayName: businessName || undefined,
+            whatsappNumber: whatsappNumber || undefined,
+            bio: bio || undefined,
+          },
+          create: {
+            userId: user.id,
+            displayName: businessName || user.name,
+            whatsappNumber: whatsappNumber || phone || "",
+            bio: bio || `Campus venture by ${user.name}`,
+            isVerifiedSeller: true,
+          },
+        });
+      }
+
+      // Broadcast real-time profile update event to Admin App
+      broadcastSyncEvent(
+        "PROFILE_UPDATED",
+        {
+          userId: user.id,
+          name: updatedUser.name,
+          email: user.email,
+          role: updatedUser.role,
+          college: updatedCollege || user.college?.name || "Campus Community",
+          rollNumber: rollNumber || user.studentVerification?.studentIdNumber,
+          department: department || departmentYear || user.studentVerification?.department,
+          graduationYear: graduationYear || user.studentVerification?.graduationYear,
+          whatsappNumber: whatsappNumber || phone || user.phone,
+          businessName: businessName || user.sellerProfile?.displayName,
+        },
+        user.id,
+        `Updated details for ${updatedUser.role} ${updatedUser.name} (${updatedCollege || user.college?.name || "Campus"})`
+      );
+
+      return NextResponse.json(
+        {
+          success: true,
+          user: updatedUser,
+          verification: updatedVerification,
+          sellerProfile: updatedSeller,
+          message: "Profile details successfully updated and synced lively to Admin App!",
+        },
+        { headers: corsHeaders }
+      );
     }
 
     return NextResponse.json({ error: "Unknown action" }, { status: 400, headers: corsHeaders });

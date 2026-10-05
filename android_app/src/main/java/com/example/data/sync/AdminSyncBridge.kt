@@ -115,6 +115,100 @@ object AdminSyncBridge {
         postToBackend(json)
     }
 
+    suspend fun syncRoleSelection(
+        email: String,
+        role: String,
+        businessName: String = "",
+        whatsappNumber: String = ""
+    ): Boolean = withContext(Dispatchers.IO) {
+        val json = JSONObject().apply {
+            put("action", "SELECT_ROLE")
+            put("email", email)
+            put("role", role)
+            if (businessName.isNotBlank()) put("businessName", businessName)
+            if (whatsappNumber.isNotBlank()) put("whatsappNumber", whatsappNumber)
+        }.toString()
+        postToBackend(json)
+    }
+
+    suspend fun syncStudentOrSellerDetails(
+        email: String,
+        name: String,
+        college: String,
+        rollNumber: String = "",
+        department: String = "",
+        graduationYear: String = "2027",
+        phone: String = "",
+        whatsappNumber: String = "",
+        businessName: String = "",
+        bio: String = "",
+        role: String = "STUDENT"
+    ): Boolean = withContext(Dispatchers.IO) {
+        val json = JSONObject().apply {
+            put("action", "UPDATE_DETAILS")
+            put("email", email)
+            put("name", name)
+            put("college", college)
+            put("rollNumber", rollNumber)
+            put("department", department)
+            put("graduationYear", graduationYear)
+            put("phone", phone)
+            put("whatsappNumber", whatsappNumber)
+            put("businessName", businessName)
+            put("bio", bio)
+            put("role", role)
+        }.toString()
+        postToBackend(json)
+    }
+
+    data class CandidateSyncInfo(
+        val studentStatus: String,
+        val sellerStatus: String,
+        val role: String,
+        val canChooseRole: Boolean,
+        val college: String,
+        val rollNumber: String,
+        val department: String,
+        val businessName: String,
+        val whatsappNumber: String
+    )
+
+    suspend fun fetchCandidateSyncInfo(email: String): CandidateSyncInfo? = withContext(Dispatchers.IO) {
+        if (email.isBlank()) return@withContext null
+
+        for (host in candidateHosts) {
+            try {
+                val request = Request.Builder()
+                    .url("$host/api/sync/mobile?email=${email.trim()}")
+                    .get()
+                    .build()
+
+                client.newCall(request).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val bodyStr = response.body?.string() ?: ""
+                        val json = JSONObject(bodyStr)
+                        if (json.optBoolean("found", false)) {
+                            return@withContext CandidateSyncInfo(
+                                studentStatus = json.optString("studentVerificationStatus", "PENDING"),
+                                sellerStatus = json.optString("sellerApplicationStatus", "NONE"),
+                                role = json.optString("role", "STUDENT"),
+                                canChooseRole = json.optBoolean("canChooseRole", false),
+                                college = json.optString("college", ""),
+                                rollNumber = json.optString("rollNumber", ""),
+                                department = json.optString("department", ""),
+                                businessName = json.optString("businessName", ""),
+                                whatsappNumber = json.optString("whatsappNumber", "")
+                            )
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                // Try next host
+            }
+        }
+        null
+    }
+
     suspend fun fetchVerificationStatus(email: String): Pair<String, String>? = withContext(Dispatchers.IO) {
         if (email.isBlank()) return@withContext null
 

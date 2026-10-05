@@ -635,7 +635,8 @@ private fun AppDestinationContent(
                     onAdminRejectVerification = { viewModel.adminRejectVerification(it) },
                     onUpdateApplicationStatus = { id, status -> viewModel.updateApplicationStatus(id, status) },
                     onNavigateToProfileHub = { viewModel.navigateTo(NavDestination.PROFILE_HUB) },
-                    onNavigateToSettings = { viewModel.navigateTo(NavDestination.SETTINGS) }
+                    onNavigateToSettings = { viewModel.navigateTo(NavDestination.SETTINGS) },
+                    onSelectCandidateRole = { role, biz, wa -> viewModel.selectCandidateRole(role, biz, wa) }
                 )
             }
             NavDestination.SETTINGS -> {

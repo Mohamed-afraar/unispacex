@@ -126,6 +126,30 @@ export function UserManagementSection() {
     }
   };
 
+  const handleUpdateUserRole = async (userId: string, newRole: string) => {
+    setUpdatingId(userId);
+    try {
+      const res = await authFetch(`/api/admin/users/${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: newRole }),
+      });
+
+      if (res.ok) {
+        setUsers((prev) =>
+          prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
+        );
+        if (selectedUser?.id === userId) {
+          setSelectedUser((prev: any) => ({ ...prev, role: newRole }));
+        }
+      }
+    } catch (err) {
+      console.error("Error updating user role:", err);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
       {/* Header */}
@@ -671,6 +695,110 @@ export function UserManagementSection() {
                       {st}
                     </button>
                   ))}
+                </div>
+              </div>
+
+              {/* Candidate Active Role Switcher (Student vs Seller Mode) */}
+              <div
+                style={{
+                  background: "rgba(99, 102, 241, 0.04)",
+                  border: "1px solid rgba(99, 102, 241, 0.18)",
+                  borderRadius: "14px",
+                  padding: "16px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "10px",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <label style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", color: "#818cf8" }}>
+                    Candidate Active Role Orbit (Live Sync)
+                  </label>
+                  <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#34d399", background: "rgba(16, 185, 129, 0.15)", padding: "2px 6px", borderRadius: "4px" }}>
+                    Live Admin Sync ⚡
+                  </span>
+                </div>
+                <p style={{ fontSize: "0.75rem", color: "#94a3b8" }}>
+                  Approved candidates can operate as a Student (buyer/innovator) or Seller (creator/store owner). Update active role on behalf of user.
+                </p>
+
+                <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
+                  {(["STUDENT", "SELLER"] as const).map((r) => {
+                    const isCurrent = selectedUser.role === r;
+                    return (
+                      <button
+                        key={r}
+                        type="button"
+                        disabled={updatingId === selectedUser.id}
+                        onClick={() => handleUpdateUserRole(selectedUser.id, r)}
+                        style={{
+                          flex: 1,
+                          padding: "10px",
+                          borderRadius: "10px",
+                          fontSize: "0.78rem",
+                          fontWeight: 800,
+                          border: isCurrent ? "1.5px solid #818cf8" : "1px solid rgba(255, 255, 255, 0.08)",
+                          cursor: "pointer",
+                          background: isCurrent ? "rgba(99, 102, 241, 0.25)" : "rgba(255, 255, 255, 0.03)",
+                          color: isCurrent ? "#ffffff" : "#94a3b8",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "6px",
+                        }}
+                      >
+                        <span>{r === "STUDENT" ? "🎓 Student Mode" : "🛍️ Seller Mode"}</span>
+                        {isCurrent && <span style={{ color: "#34d399", fontSize: "0.7rem" }}>✓ Active</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Live Student & Seller Telemetry Card */}
+              <div
+                style={{
+                  background: "rgba(255, 255, 255, 0.02)",
+                  border: "1px solid rgba(255, 255, 255, 0.06)",
+                  borderRadius: "14px",
+                  padding: "16px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "8px",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: "0.72rem", fontWeight: 800, textTransform: "uppercase", color: "#34d399" }}>
+                    Student &amp; Seller Details (Synced Lively)
+                  </span>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", fontSize: "0.78rem", marginTop: "4px" }}>
+                  <div>
+                    <span style={{ color: "#64748b", display: "block", fontSize: "0.68rem" }}>Student Roll / ID:</span>
+                    <strong style={{ color: "#818cf8" }}>
+                      {selectedUser.studentVerification?.studentIdNumber || selectedUser.rollNumber || "Not submitted"}
+                    </strong>
+                  </div>
+                  <div>
+                    <span style={{ color: "#64748b", display: "block", fontSize: "0.68rem" }}>Department &amp; Year:</span>
+                    <span style={{ color: "#e2e8f0" }}>
+                      {selectedUser.studentVerification?.department || selectedUser.department || "General"}
+                      {selectedUser.studentVerification?.graduationYear ? ` (${selectedUser.studentVerification.graduationYear})` : ""}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ color: "#64748b", display: "block", fontSize: "0.68rem" }}>Store / Venture Name:</span>
+                    <strong style={{ color: "#fbbf24" }}>
+                      {selectedUser.sellerProfile?.businessName || selectedUser.sellerProfile?.storeName || selectedUser.businessName || "Not created"}
+                    </strong>
+                  </div>
+                  <div>
+                    <span style={{ color: "#64748b", display: "block", fontSize: "0.68rem" }}>Seller WhatsApp:</span>
+                    <span style={{ color: "#e2e8f0" }}>
+                      {selectedUser.sellerProfile?.whatsappNumber || selectedUser.phone || "Not linked"}
+                    </span>
+                  </div>
                 </div>
               </div>
 

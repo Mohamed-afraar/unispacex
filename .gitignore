@@ -38,6 +38,9 @@ local.properties
 # Temp / Root Screenshots & Artifacts
 phone_*.png
 screen_*.png
+student_*.png
+storage/
+*.tsbuildinfo
 .agents/
 .aider-desk/
 .devin/

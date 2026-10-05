@@ -110,6 +110,7 @@ fun MissionControlScreen(
     onUpdateApplicationStatus: (String, com.example.model.ApplicationStatus) -> Unit = { _, _ -> },
     onNavigateToProfileHub: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
+    onSelectCandidateRole: (UserRole, String, String) -> Unit = { _, _, _ -> },
     modifier: Modifier = Modifier
 ) {
     val userStudent = uiState.userProfile
@@ -879,6 +880,7 @@ fun MissionControlScreen(
                     val hasPendingSheerIdReq = uiState.verificationRequests.any { it.studentId == userStudent.id && it.type == "STUDENT_SHEERID" && it.status == "PENDING" }
                     val isSellerVerified = userStudent.isSellerVerified
                     val pendingSellerReq = uiState.verificationRequests.firstOrNull { it.studentId == userStudent.id && it.type == "SELLER_GOVT_ID" && it.status == "PENDING" }
+                    val userBusinessName = uiState.businesses.firstOrNull { it.ownerName == userStudent.name || it.name in userStudent.businesses }?.name ?: userStudent.businesses.firstOrNull() ?: ""
 
                     // Card 1: SheerID Student Verification
                     Box(
@@ -951,7 +953,19 @@ fun MissionControlScreen(
                             .clip(RoundedCornerShape(12.dp))
                             .background(if (isSellerVerified) Color(0xFF1E1430) else CosmicSurfaceCard)
                             .border(1.dp, if (isSellerVerified) Color(0xFFFFD54F) else CosmicBorderSubtle, RoundedCornerShape(12.dp))
-                            .clickable { if (!isSellerVerified && pendingSellerReq == null) onOpenSellerVerification() }
+                            .clickable {
+                                if (!isSellerVerified && pendingSellerReq == null) {
+                                    if (isSheerIdVerified) {
+                                        onSelectCandidateRole(
+                                            UserRole.SELLER,
+                                            userBusinessName,
+                                            userStudent.sellerWhatsappNumber ?: ""
+                                        )
+                                    } else {
+                                        onOpenSellerVerification()
+                                    }
+                                }
+                            }
                             .padding(12.dp)
                     ) {
                         Row(
@@ -969,6 +983,7 @@ fun MissionControlScreen(
                                     Text(
                                         text = when {
                                             isSellerVerified -> "Verified Campus Seller & Creator ✓"
+                                            isSheerIdVerified -> "Seller Privileges Available (Student Verified)"
                                             pendingSellerReq != null -> "Seller Verification Under Review ⏳"
                                             else -> "Become a Verified Campus Seller"
                                         },
@@ -981,6 +996,7 @@ fun MissionControlScreen(
                                     Text(
                                         text = when {
                                             isSellerVerified -> "Store active · WhatsApp: ${userStudent.sellerWhatsappNumber ?: "Connected"} · ID: ${userStudent.sellerGovtIdType ?: "Govt ID"}"
+                                            isSheerIdVerified -> "Collegiate identity verified! Click to activate Seller Mode and launch your campus storefront."
                                             pendingSellerReq != null -> "Government ID (${pendingSellerReq.governmentIdType ?: "Govt ID"}) & sample products under review by Admin"
                                             else -> "Submit Govt ID, WhatsApp number & product images for Admin approval"
                                         },
@@ -998,9 +1014,158 @@ fun MissionControlScreen(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(6.dp))
                                         .background(Color(0xFFD97706))
+                                        .clickable {
+                                            if (isSheerIdVerified) {
+                                                onSelectCandidateRole(
+                                                    UserRole.SELLER,
+                                                    userBusinessName,
+                                                    userStudent.sellerWhatsappNumber ?: ""
+                                                )
+                                            } else {
+                                                onOpenSellerVerification()
+                                            }
+                                        }
                                         .padding(horizontal = 10.dp, vertical = 5.dp)
                                 ) {
-                                    Text(text = "Apply to Sell", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = StarWhite)
+                                    Text(
+                                        text = if (isSheerIdVerified) "Activate Seller 🛍️" else "Apply to Sell",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = StarWhite
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Card 3: Post-Approval Candidate Role Selection (Student vs Seller)
+                    if (isSheerIdVerified) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFF131B2E))
+                                .border(1.dp, CosmicCyan.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                                .padding(12.dp)
+                        ) {
+                            Column {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(text = "✨", fontSize = 16.sp)
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "Verified Member Orbit: Choose Your Role",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = StarWhite
+                                        )
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(CosmicCyan.copy(alpha = 0.2f))
+                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = "Live Admin Sync ⚡",
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = CosmicCyan
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "As an approved student, choose to participate as a Student (innovator/buyer) or Seller (creator/store owner). Changes update lively to Admin.",
+                                    fontSize = 10.sp,
+                                    color = SoftLavender
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    val isCurrentStudent = uiState.currentUserRole == UserRole.STUDENT
+                                    val isCurrentSeller = uiState.currentUserRole == UserRole.SELLER
+
+                                    // Option 1: Student Mode
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(if (isCurrentStudent) CosmicPurple.copy(alpha = 0.35f) else CosmicSurfaceElevated)
+                                            .border(
+                                                1.dp,
+                                                if (isCurrentStudent) CosmicCyan else CosmicBorderSubtle,
+                                                RoundedCornerShape(8.dp)
+                                            )
+                                            .clickable {
+                                                onSelectCandidateRole(UserRole.STUDENT, "", "")
+                                            }
+                                            .padding(8.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text(text = "🎓", fontSize = 18.sp)
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Text(
+                                                text = "Student Mode",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (isCurrentStudent) CosmicCyan else StarWhite
+                                            )
+                                            Text(
+                                                text = if (isCurrentStudent) "Active ✓" else "Buyer / Peer",
+                                                fontSize = 9.sp,
+                                                fontWeight = if (isCurrentStudent) FontWeight.Bold else FontWeight.Normal,
+                                                color = if (isCurrentStudent) Color(0xFF10B981) else TextMuted
+                                            )
+                                        }
+                                    }
+
+                                    // Option 2: Seller Mode
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(if (isCurrentSeller) Color(0xFF2C1E3D) else CosmicSurfaceElevated)
+                                            .border(
+                                                1.dp,
+                                                if (isCurrentSeller) Color(0xFFFFD54F) else CosmicBorderSubtle,
+                                                RoundedCornerShape(8.dp)
+                                            )
+                                            .clickable {
+                                                onSelectCandidateRole(
+                                                    UserRole.SELLER,
+                                                    userBusinessName,
+                                                    userStudent.sellerWhatsappNumber ?: ""
+                                                )
+                                            }
+                                            .padding(8.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text(text = "🛍️", fontSize = 18.sp)
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Text(
+                                                text = "Seller Mode",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (isCurrentSeller) Color(0xFFFFD54F) else StarWhite
+                                            )
+                                            Text(
+                                                text = if (isCurrentSeller) "Active ✓" else "Store Owner",
+                                                fontSize = 9.sp,
+                                                fontWeight = if (isCurrentSeller) FontWeight.Bold else FontWeight.Normal,
+                                                color = if (isCurrentSeller) Color(0xFFFFD54F) else TextMuted
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }

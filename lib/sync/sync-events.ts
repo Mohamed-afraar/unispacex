@@ -7,6 +7,8 @@ export type SyncEventType =
   | "SELLER_APPLICATION_SUBMITTED"
   | "SELLER_APPLICATION_REVIEWED"
   | "USER_STATUS_CHANGED"
+  | "ROLE_SELECTED"
+  | "PROFILE_UPDATED"
   | "PRODUCT_CHANGED"
   | "SYSTEM_HEARTBEAT";
 
@@ -69,8 +71,10 @@ export function broadcastSyncEvent(
   } else if (type === "SELLER_APPLICATION_SUBMITTED" || type === "SELLER_APPLICATION_REVIEWED") {
     syncState.sellerApplicationVersion += 1;
     syncState.userVersion += 1;
-  } else if (type === "USER_STATUS_CHANGED") {
+  } else if (type === "USER_STATUS_CHANGED" || type === "ROLE_SELECTED" || type === "PROFILE_UPDATED") {
     syncState.userVersion += 1;
+    syncState.studentVerificationVersion += 1;
+    syncState.sellerApplicationVersion += 1;
   } else if (type === "PRODUCT_CHANGED") {
     syncState.productVersion += 1;
   }
@@ -106,16 +110,22 @@ export async function getSyncTelemetry() {
   // Query fast real-time counts from database
   let pendingStudents = 0;
   let pendingSellers = 0;
+  let verifiedStudents = 0;
+  let approvedSellers = 0;
   let totalUsers = 0;
 
   try {
-    const [pStudents, pSellers, tUsers] = await Promise.all([
+    const [pStudents, pSellers, vStudents, aSellers, tUsers] = await Promise.all([
       prisma.studentVerification.count({ where: { status: "PENDING" } }),
       prisma.sellerApplication.count({ where: { status: "PENDING" } }),
+      prisma.studentVerification.count({ where: { status: "APPROVED" } }),
+      prisma.user.count({ where: { role: "SELLER" } }),
       prisma.user.count(),
     ]);
     pendingStudents = pStudents;
     pendingSellers = pSellers;
+    verifiedStudents = vStudents;
+    approvedSellers = aSellers;
     totalUsers = tUsers;
   } catch (err) {
     console.error("Error fetching sync counts from database:", err);
@@ -129,8 +139,11 @@ export async function getSyncTelemetry() {
     productVersion: syncState.productVersion,
     pendingStudents,
     pendingSellers,
+    verifiedStudents,
+    approvedSellers,
     totalUsers,
     lastEvent: syncState.lastEvent,
+    recentEvents: syncState.recentEvents.slice(0, 10),
     timestamp: Date.now(),
   };
 }

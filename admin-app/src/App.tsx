@@ -73,6 +73,15 @@ function AdminAppInner() {
               } else if (data.lastEvent.type === "SELLER_APPLICATION_SUBMITTED") {
                 setLiveBanner(`⚡ New Seller Application submitted by ${data.lastEvent.data?.sellerName || "a student"}`);
                 setTimeout(() => setLiveBanner(null), 6000);
+              } else if (data.lastEvent.type === "ROLE_SELECTED") {
+                setLiveBanner(`⚡ Candidate Role Switched: ${data.lastEvent.data?.userName || data.lastEvent.data?.email || "Candidate"} is now active as ${data.lastEvent.data?.role === "SELLER" ? "Campus Seller 🛍️" : "Campus Student 🎓"}`);
+                setTimeout(() => setLiveBanner(null), 7000);
+              } else if (data.lastEvent.type === "PROFILE_UPDATED") {
+                setLiveBanner(`⚡ Candidate Details Updated Lively: ${data.lastEvent.data?.name || "Candidate"} (Roll: ${data.lastEvent.data?.rollNumber || "Updated"}, Dept: ${data.lastEvent.data?.department || "Campus"})`);
+                setTimeout(() => setLiveBanner(null), 7000);
+              } else if (data.lastEvent.type === "USER_STATUS_CHANGED") {
+                setLiveBanner(`⚡ User Permissions Changed: ${data.lastEvent.data?.userName || "User"} updated`);
+                setTimeout(() => setLiveBanner(null), 6000);
               } else if (data.lastEvent.type === "USER_REGISTERED") {
                 setLiveBanner(`⚡ New User Account Created: ${data.lastEvent.data?.userName || data.lastEvent.data?.email || "New User"}`);
                 setTimeout(() => setLiveBanner(null), 6000);

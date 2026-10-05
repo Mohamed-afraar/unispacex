@@ -19,6 +19,10 @@ import {
   ArrowRight,
   RefreshCw,
   AlertTriangle,
+  Store,
+  GraduationCap,
+  Phone,
+  Save,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -32,10 +36,14 @@ export default function VerifyStudentPage() {
   const [studentIdNumber, setStudentIdNumber] = useState("");
   const [department, setDepartment] = useState("");
   const [graduationYear, setGraduationYear] = useState("2027");
+  const [businessName, setBusinessName] = useState("");
+  const [whatsappNumber, setWhatsappNumber] = useState("");
   const [documentFile, setDocumentFile] = useState<File | null>(null);
   const [documentToken, setDocumentToken] = useState<string | null>(null);
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [updatingRole, setUpdatingRole] = useState(false);
+  const [updatingDetails, setUpdatingDetails] = useState(false);
   const [verificationRecord, setVerificationRecord] = useState<any>(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
 
@@ -185,6 +193,66 @@ export default function VerifyStudentPage() {
     }
   };
 
+  const handleSelectRole = async (targetRole: "STUDENT" | "SELLER") => {
+    setUpdatingRole(true);
+    try {
+      const res = await fetch("/api/students/verification/select-role", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          role: targetRole,
+          businessName: businessName.trim() || undefined,
+          whatsappNumber: whatsappNumber.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update role");
+      await refreshUser();
+      showToast(
+        `Role switched to ${targetRole === "SELLER" ? "Campus Seller" : "Campus Student"}! Lively synced to Admin app.`,
+        "success"
+      );
+    } catch (err: any) {
+      showToast(err.message || "Role selection failed", "error");
+    } finally {
+      setUpdatingRole(false);
+    }
+  };
+
+  const handleUpdateDetails = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    setUpdatingDetails(true);
+    try {
+      const selectedCollege = colleges.find((c) => c.id === selectedCollegeId);
+      const res = await fetch("/api/sync/mobile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "UPDATE_DETAILS",
+          email: user.email,
+          name: user.name,
+          college: selectedCollege?.name || user.college?.name || "Campus",
+          rollNumber: studentIdNumber.trim(),
+          department: department.trim(),
+          graduationYear: graduationYear.trim(),
+          whatsappNumber: whatsappNumber.trim(),
+          businessName: businessName.trim(),
+          role: user.role,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to sync details");
+      await refreshUser();
+      await fetchStatus(false);
+      showToast("Candidate details updated and lively synced to Admin app! ⚡", "success");
+    } catch (err: any) {
+      showToast(err.message || "Failed to update details", "error");
+    } finally {
+      setUpdatingDetails(false);
+    }
+  };
+
   const status = user?.studentVerificationStatus || "PENDING";
   const isApproved = status === "APPROVED" || status === "VERIFIED";
   const isPending = status === "PENDING";
@@ -222,34 +290,188 @@ export default function VerifyStudentPage() {
 
         {/* Status Callout Banner */}
         {isApproved && (
-          <div className="mb-8 p-5 bg-emerald-50 border border-emerald-200 rounded-2xl">
-            <div className="flex items-start gap-3">
-              <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0 mt-0.5" />
-              <div>
-                <h3 className="font-bold text-emerald-950 text-sm">
-                  Student Verification Approved &amp; Active
-                </h3>
-                <p className="text-xs text-emerald-800 mt-1 leading-relaxed">
-                  Your collegiate identity is fully verified for <strong>{user?.college?.name || "your campus"}</strong>. You have unlocked full marketplace buying, messaging, and seller application privileges.
-                </p>
-                <div className="mt-4 flex flex-wrap gap-3">
-                  <Link
-                    href="/marketplace"
-                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-xs transition"
-                  >
-                    <span>Browse Marketplace</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
-                  <Link
-                    href="/become-seller"
-                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-white text-emerald-800 border border-emerald-300 hover:bg-emerald-100/50 rounded-xl text-xs font-semibold transition"
-                  >
-                    <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Apply to Become a Seller</span>
-                  </Link>
+          <div className="space-y-6 mb-8">
+            <div className="p-5 bg-emerald-50 border border-emerald-200 rounded-2xl">
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-bold text-emerald-950 text-sm">
+                    Student Verification Approved &amp; Active
+                  </h3>
+                  <p className="text-xs text-emerald-800 mt-1 leading-relaxed">
+                    Your collegiate identity is fully verified for <strong>{user?.college?.name || "your campus"}</strong>. You are qualified to operate as a campus student or seller with real-time sync to the admin app.
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <Link
+                      href="/marketplace"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-xs transition"
+                    >
+                      <span>Browse Marketplace</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                    <Link
+                      href="/become-seller"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-white text-emerald-800 border border-emerald-300 hover:bg-emerald-100/50 rounded-xl text-xs font-semibold transition"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Seller Portal</span>
+                    </Link>
+                  </div>
                 </div>
               </div>
             </div>
+
+            {/* Candidate Role Choice: Student or Seller */}
+            <div className="p-6 bg-slate-50 border border-slate-200 rounded-2xl space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-brand-600" />
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Candidate Role Orbit: Student or Seller
+                  </h3>
+                </div>
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                  Live Admin Sync ⚡
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                As an approved candidate, select how you want to participate on campus. You can switch between Student Mode and Seller Mode at any time. Changes sync lively to the Admin app.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                {/* Student Mode Card */}
+                <div
+                  onClick={() => handleSelectRole("STUDENT")}
+                  className={`cursor-pointer p-4 rounded-xl border transition-all ${
+                    user?.role === "STUDENT"
+                      ? "bg-white border-brand-500 shadow-md ring-2 ring-brand-500/20"
+                      : "bg-white/60 border-slate-200 hover:bg-white hover:border-slate-300"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="w-8 h-8 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center font-bold text-base">
+                      🎓
+                    </div>
+                    {user?.role === "STUDENT" && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                        Active Mode ✓
+                      </span>
+                    )}
+                  </div>
+                  <h4 className="text-xs font-bold text-slate-900">Student Mode</h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Browse marketplace, buy listings, exchange notes &amp; connect with campus peers.
+                  </p>
+                </div>
+
+                {/* Seller Mode Card */}
+                <div
+                  onClick={() => handleSelectRole("SELLER")}
+                  className={`cursor-pointer p-4 rounded-xl border transition-all ${
+                    user?.role === "SELLER"
+                      ? "bg-white border-amber-500 shadow-md ring-2 ring-amber-500/20"
+                      : "bg-white/60 border-slate-200 hover:bg-white hover:border-slate-300"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-base">
+                      🛍️
+                    </div>
+                    {user?.role === "SELLER" && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                        Active Mode ✓
+                      </span>
+                    )}
+                  </div>
+                  <h4 className="text-xs font-bold text-slate-900">Seller Mode</h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Open campus storefront, list products, showcase inventory &amp; chat with buyers.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Live Student & Seller Detail Synchronizer */}
+            <form onSubmit={handleUpdateDetails} className="p-6 bg-white border border-slate-200 rounded-2xl space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                    Update Student &amp; Seller Details (Live to Admin)
+                  </h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Changes made here sync lively across all UniSpaceX portals and the Admin Dashboard.
+                  </p>
+                </div>
+                <button
+                  type="submit"
+                  disabled={updatingDetails}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition shadow-xs"
+                >
+                  {updatingDetails ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Save className="w-3.5 h-3.5" />
+                  )}
+                  <span>{updatingDetails ? "Syncing..." : "Sync Details Lively"}</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Student Roll / ID</label>
+                  <input
+                    type="text"
+                    value={studentIdNumber}
+                    onChange={(e) => setStudentIdNumber(e.target.value)}
+                    placeholder="e.g. 21CS042"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-800 focus:bg-white focus:border-brand-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Department / Branch</label>
+                  <input
+                    type="text"
+                    value={department}
+                    onChange={(e) => setDepartment(e.target.value)}
+                    placeholder="e.g. Computer Science"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-800 focus:bg-white focus:border-brand-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Graduation Year</label>
+                  <input
+                    type="text"
+                    value={graduationYear}
+                    onChange={(e) => setGraduationYear(e.target.value)}
+                    placeholder="e.g. 2027"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-800 focus:bg-white focus:border-brand-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Business / Storefront Name</label>
+                  <input
+                    type="text"
+                    value={businessName}
+                    onChange={(e) => setBusinessName(e.target.value)}
+                    placeholder="e.g. Campus Tech & Threads"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-800 focus:bg-white focus:border-brand-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">WhatsApp / Contact Phone</label>
+                  <input
+                    type="tel"
+                    value={whatsappNumber}
+                    onChange={(e) => setWhatsappNumber(e.target.value)}
+                    placeholder="e.g. +91 98765 43210"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-800 focus:bg-white focus:border-brand-500 outline-none"
+                  />
+                </div>
+              </div>
+            </form>
           </div>
         )}
 

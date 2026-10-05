@@ -128,6 +128,26 @@ export async function PATCH(
       },
     });
 
+    // Real-time broadcast sync event
+    try {
+      const { broadcastSyncEvent } = await import("@/lib/sync/sync-events");
+      broadcastSyncEvent(
+        "USER_STATUS_CHANGED",
+        {
+          userId: updatedUser.id,
+          name: updatedUser.name,
+          email: updatedUser.email,
+          role: updatedUser.role,
+          studentStatus: updatedUser.studentVerificationStatus,
+          isSuspended: updatedUser.isSuspended,
+        },
+        updatedUser.id,
+        `Admin updated ${updatedUser.name}: Role=${updatedUser.role}, Status=${updatedUser.studentVerificationStatus}`
+      );
+    } catch {
+      // Ignore broadcast error
+    }
+
     const { passwordHash: _, ...safeUser } = updatedUser;
 
     return NextResponse.json(

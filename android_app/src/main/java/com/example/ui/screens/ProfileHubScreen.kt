@@ -828,6 +828,104 @@ fun ProfileHubScreen(
                             }
                         }
 
+                        // 1. Role Mode Selection Card (When Student Verification Approved)
+                        if (isSheerIdActive) {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(containerColor = CosmicSurfaceCard),
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.5.dp, CosmicBorderGlow)
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(text = "✨", fontSize = 16.sp)
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = "Verified Member Orbit: Choose Your Role",
+                                                fontSize = 12.5.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = CelestialGold
+                                            )
+                                        }
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(6.dp))
+                                                .background(CosmicPurple.copy(alpha = 0.3f))
+                                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                        ) {
+                                            Text(
+                                                text = if (uiState.currentUserRole == com.example.model.UserRole.SELLER) "Active: SELLER" else "Active: STUDENT",
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = CosmicCyan
+                                            )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "Student verification approved! You can operate as a Campus Student (buyer/innovator) or Campus Seller (storefront owner/creator). Updates sync lively to Admin.",
+                                        fontSize = 10.5.sp,
+                                        color = SoftLavender
+                                    )
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        // Option 1: Student Mode
+                                        val isCurrentStudent = uiState.currentUserRole == com.example.model.UserRole.STUDENT
+                                        Card(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .clickable { viewModel.selectCandidateRole(com.example.model.UserRole.STUDENT) },
+                                            colors = CardDefaults.cardColors(
+                                                containerColor = if (isCurrentStudent) CosmicPurple.copy(alpha = 0.35f) else theme.surfaceElevated
+                                            ),
+                                            shape = RoundedCornerShape(10.dp),
+                                            border = BorderStroke(if (isCurrentStudent) 1.5.dp else 1.dp, if (isCurrentStudent) CosmicCyan else theme.borderSubtle)
+                                        ) {
+                                            Column(modifier = Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                                Text("🎓", fontSize = 20.sp)
+                                                Spacer(modifier = Modifier.height(4.dp))
+                                                Text("Student Mode", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = if (isCurrentStudent) CosmicCyan else StarWhite)
+                                                Text("Buyer & Peer", fontSize = 9.5.sp, color = TextMuted)
+                                                if (isCurrentStudent) {
+                                                    Spacer(modifier = Modifier.height(4.dp))
+                                                    Text("Active ✓", fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF10B981))
+                                                }
+                                            }
+                                        }
+
+                                        // Option 2: Seller Mode
+                                        val isCurrentSeller = uiState.currentUserRole == com.example.model.UserRole.SELLER
+                                        Card(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .clickable { viewModel.selectCandidateRole(com.example.model.UserRole.SELLER, businessName = bizName, whatsappNumber = initialProfile.sellerWhatsappNumber ?: "") },
+                                            colors = CardDefaults.cardColors(
+                                                containerColor = if (isCurrentSeller) Color(0xFF2C1E3D) else theme.surfaceElevated
+                                            ),
+                                            shape = RoundedCornerShape(10.dp),
+                                            border = BorderStroke(if (isCurrentSeller) 1.5.dp else 1.dp, if (isCurrentSeller) CelestialGold else theme.borderSubtle)
+                                        ) {
+                                            Column(modifier = Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                                Text("🛍️", fontSize = 20.sp)
+                                                Spacer(modifier = Modifier.height(4.dp))
+                                                Text("Seller Mode", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = if (isCurrentSeller) CelestialGold else StarWhite)
+                                                Text("Store & Creator", fontSize = 9.5.sp, color = TextMuted)
+                                                if (isCurrentSeller) {
+                                                    Spacer(modifier = Modifier.height(4.dp))
+                                                    Text("Active ✓", fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, color = CelestialGold)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         // Seller Verification Status Row
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -847,6 +945,7 @@ fun ProfileHubScreen(
                                         Text(
                                             text = when {
                                                 isSellerActive -> "Verified Campus Seller ✓"
+                                                isSheerIdActive -> "Seller Privileges Available (Student Verified)"
                                                 pendingSeller != null -> "Seller Application Under Review ⏳"
                                                 else -> "Campus Seller Verification"
                                             },
@@ -869,23 +968,39 @@ fun ProfileHubScreen(
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = when {
-                                        isSellerActive -> "Store active. WhatsApp: ${initialProfile.sellerWhatsappNumber ?: "Connected"} · Govt ID: ${initialProfile.sellerGovtIdType ?: "Verified"}"
+                                        isSellerActive -> "Store active. WhatsApp: ${initialProfile.sellerWhatsappNumber ?: "Connected"} · Status: Verified Campus Seller"
+                                        isSheerIdActive -> "Your collegiate identity is already approved! You can switch to Seller Mode anytime to create listings and launch your storefront."
                                         pendingSeller != null -> "Government ID (${pendingSeller.governmentIdType ?: "Govt ID"}), WhatsApp & product samples are awaiting Admin approval."
-                                        else -> "To become an approved seller, submit any Government ID, product images, and your WhatsApp number. Activates once admin approved."
+                                        else -> "To become an approved seller, complete student verification first or submit seller verification."
                                     },
                                     fontSize = 10.5.sp,
                                     color = SoftLavender
                                 )
-                                if (!isSellerActive && pendingSeller == null) {
+                                if (!isSellerActive) {
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Button(
-                                        onClick = { viewModel.openSellerVerificationModal() },
+                                        onClick = {
+                                            if (isSheerIdActive) {
+                                                viewModel.selectCandidateRole(
+                                                    com.example.model.UserRole.SELLER,
+                                                    businessName = bizName,
+                                                    whatsappNumber = initialProfile.sellerWhatsappNumber ?: ""
+                                                )
+                                            } else {
+                                                viewModel.openSellerVerificationModal()
+                                            }
+                                        },
                                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706)),
                                         shape = RoundedCornerShape(8.dp),
                                         modifier = Modifier.fillMaxWidth().height(32.dp),
                                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
                                     ) {
-                                        Text("Apply for Seller Verification (Govt ID & WhatsApp) ➔", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = StarWhite)
+                                        Text(
+                                            text = if (isSheerIdActive) "Activate Seller Mode 🛍️" else "Apply for Seller Verification ➔",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = StarWhite
+                                        )
                                     }
                                 }
                             }

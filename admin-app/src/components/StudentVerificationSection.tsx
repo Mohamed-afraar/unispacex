@@ -240,9 +240,26 @@ export function StudentVerificationSection() {
               <div key={item.id} className="mobile-touch-card">
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "8px" }}>
                   <div>
-                    <h3 style={{ fontSize: "0.92rem", fontWeight: 800, color: "#f8fafc" }}>
-                      {item.user?.name || "Student"}
-                    </h3>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <h3 style={{ fontSize: "0.92rem", fontWeight: 800, color: "#f8fafc" }}>
+                        {item.user?.name || "Student"}
+                      </h3>
+                      {item.user?.role && (
+                        <span
+                          style={{
+                            fontSize: "0.62rem",
+                            fontWeight: 700,
+                            padding: "1px 5px",
+                            borderRadius: "4px",
+                            background: item.user.role === "SELLER" ? "rgba(245, 158, 11, 0.2)" : "rgba(99, 102, 241, 0.2)",
+                            color: item.user.role === "SELLER" ? "#fbbf24" : "#818cf8",
+                            border: `1px solid ${item.user.role === "SELLER" ? "rgba(245, 158, 11, 0.4)" : "rgba(99, 102, 241, 0.4)"}`,
+                          }}
+                        >
+                          {item.user.role === "SELLER" ? "🛍️ Seller" : "🎓 Student"}
+                        </span>
+                      )}
+                    </div>
                     <p style={{ fontSize: "0.74rem", color: "#94a3b8", marginTop: "1px" }}>
                       {item.user?.email}
                     </p>
@@ -329,9 +346,26 @@ export function StudentVerificationSection() {
                   <tr key={item.id}>
                     <td>
                       <div>
-                        <p style={{ fontWeight: 700, color: "#f8fafc" }}>
-                          {item.user?.name || "Student"}
-                        </p>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <p style={{ fontWeight: 700, color: "#f8fafc" }}>
+                            {item.user?.name || "Student"}
+                          </p>
+                          {item.user?.role && (
+                            <span
+                              style={{
+                                fontSize: "0.62rem",
+                                fontWeight: 700,
+                                padding: "1px 5px",
+                                borderRadius: "4px",
+                                background: item.user.role === "SELLER" ? "rgba(245, 158, 11, 0.2)" : "rgba(99, 102, 241, 0.2)",
+                                color: item.user.role === "SELLER" ? "#fbbf24" : "#818cf8",
+                                border: `1px solid ${item.user.role === "SELLER" ? "rgba(245, 158, 11, 0.4)" : "rgba(99, 102, 241, 0.4)"}`,
+                              }}
+                            >
+                              {item.user.role === "SELLER" ? "🛍️ Seller" : "🎓 Student"}
+                            </span>
+                          )}
+                        </div>
                         <p style={{ fontSize: "0.75rem", color: "#94a3b8" }}>
                           {item.user?.email}
                         </p>

@@ -34,6 +34,9 @@ export default function BecomeSellerPage() {
   const [applicationStatus, setApplicationStatus] = useState<any>(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [instantActivating, setInstantActivating] = useState(false);
+  const [instantStoreName, setInstantStoreName] = useState("");
+  const [instantWhatsapp, setInstantWhatsapp] = useState("");
 
   // Government ID upload state (Private Vault)
   const [govtIdFile, setGovtIdFile] = useState<File | null>(null);
@@ -247,6 +250,51 @@ export default function BecomeSellerPage() {
     }
   };
 
+  const handleInstantActivateSeller = async () => {
+    setInstantActivating(true);
+    try {
+      const res = await fetch("/api/students/verification/select-role", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          role: "SELLER",
+          businessName: instantStoreName.trim() || undefined,
+          whatsappNumber: instantWhatsapp.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to activate seller mode");
+      await refreshUser();
+      showToast("🎉 Seller Mode successfully activated! Live synced to Admin app.", "success");
+      router.push("/products/new");
+    } catch (err: any) {
+      showToast(err.message || "Failed to activate seller mode", "error");
+    } finally {
+      setInstantActivating(false);
+    }
+  };
+
+  const handleSwitchToStudentMode = async () => {
+    setInstantActivating(true);
+    try {
+      const res = await fetch("/api/students/verification/select-role", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          role: "STUDENT",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to switch mode");
+      await refreshUser();
+      showToast("🎓 Switched back to Student Mode! Live synced to Admin app.", "success");
+    } catch (err: any) {
+      showToast(err.message || "Failed to switch mode", "error");
+    } finally {
+      setInstantActivating(false);
+    }
+  };
+
   if (authLoading || loadingStatus) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center">
@@ -326,7 +374,7 @@ export default function BecomeSellerPage() {
             <p className="text-xs text-indigo-800 max-w-md mx-auto leading-relaxed">
               Your seller credentials have been reviewed and approved by campus administrators. You can create product listings, manage inventory, and receive direct buyer inquiries.
             </p>
-            <div className="pt-2 flex justify-center gap-3">
+            <div className="pt-2 flex flex-wrap justify-center gap-3">
               <button
                 onClick={() => router.push("/products/new")}
                 className="px-6 py-3 bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-2"
@@ -339,6 +387,13 @@ export default function BecomeSellerPage() {
                 className="px-6 py-3 bg-white border border-indigo-200 text-indigo-900 font-bold text-xs rounded-xl hover:bg-indigo-50 transition"
               >
                 Go to Dashboard
+              </button>
+              <button
+                onClick={handleSwitchToStudentMode}
+                disabled={instantActivating}
+                className="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition"
+              >
+                {instantActivating ? "Switching..." : "Switch to Student Mode 🎓"}
               </button>
             </div>
           </div>
@@ -401,6 +456,64 @@ export default function BecomeSellerPage() {
                 </p>
               </div>
             )}
+
+            {/* Instant 1-Click Seller Activation for Verified Students */}
+            <div className="p-6 bg-gradient-to-br from-indigo-50/80 to-purple-50/80 border border-indigo-200 rounded-2xl space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-brand-600" />
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Verified Student Privilege: Instant 1-Click Seller Activation
+                  </h3>
+                </div>
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">
+                  Pre-Approved ✓
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Because your student verification is already approved for <strong>{user?.college?.name || "your campus"}</strong>, you can activate your campus storefront instantly without redundant ID re-uploads!
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Store / Business Name</label>
+                  <input
+                    type="text"
+                    value={instantStoreName}
+                    onChange={(e) => setInstantStoreName(e.target.value)}
+                    placeholder="e.g. Campus Tech & Notes Hub"
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-800 focus:border-brand-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">WhatsApp Contact for Buyers</label>
+                  <input
+                    type="tel"
+                    value={instantWhatsapp}
+                    onChange={(e) => setInstantWhatsapp(e.target.value)}
+                    placeholder="e.g. +91 98765 43210"
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-800 focus:border-brand-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 flex items-center justify-between">
+                <span className="text-[11px] text-slate-500">Live synced to Admin App in real-time</span>
+                <button
+                  type="button"
+                  onClick={handleInstantActivateSeller}
+                  disabled={instantActivating}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition shadow-sm"
+                >
+                  {instantActivating ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Store className="w-3.5 h-3.5" />
+                  )}
+                  <span>{instantActivating ? "Activating..." : "Activate Seller Mode 🛍️"}</span>
+                </button>
+              </div>
+            </div>
 
             <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />

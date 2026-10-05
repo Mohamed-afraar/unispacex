@@ -40,7 +40,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   });
   const [loading, setLoading] = useState(true);
 
-  // Authenticated fetch helper that adds Authorization header
+  // Authenticated fetch helper with dual-channel resilience
   const authFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
     const headers = new Headers(options.headers || {});
     if (token) {
@@ -48,14 +48,27 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     }
     headers.set("Accept", "application/json");
 
-    const targetUrl = resolveUrl(url);
-    const res = await fetch(targetUrl, {
-      ...options,
-      headers,
-    });
+    const primaryUrl = resolveUrl(url);
+    const cleanPath = url.startsWith("/") ? url : `/${url}`;
+    const fallbackUrl = primaryUrl.startsWith("http")
+      ? cleanPath
+      : `https://unispacex.vercel.app${cleanPath}`;
+
+    let res: Response;
+    try {
+      res = await fetch(primaryUrl, {
+        ...options,
+        headers,
+      });
+    } catch (primaryErr) {
+      console.warn(`Primary fetch to ${primaryUrl} failed, falling back to ${fallbackUrl}:`, primaryErr);
+      res = await fetch(fallbackUrl, {
+        ...options,
+        headers,
+      });
+    }
 
     if (res.status === 401 || res.status === 403) {
-      // If unauthorized, clear session
       setAdmin(null);
       setToken(null);
       if (typeof window !== "undefined") {
@@ -75,14 +88,25 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
       }
 
       try {
-        const res = await fetch(resolveUrl("/api/admin/auth/me"), {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        let res: Response;
+        try {
+          res = await fetch(resolveUrl("/api/admin/auth/me"), {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: "application/json",
+            },
+          });
+        } catch {
+          res = await fetch("https://unispacex.vercel.app/api/admin/auth/me", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: "application/json",
+            },
+          });
+        }
 
         if (res.ok) {
-          const data = await res.json();
+          const data = await res.json().catch(() => ({}));
           if (data.admin) {
             setAdmin(data.admin);
           } else {
@@ -107,15 +131,40 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      const res = await fetch(resolveUrl("/api/admin/auth/login"), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      });
+      const primaryUrl = resolveUrl("/api/admin/auth/login");
+      const fallbackUrl = primaryUrl.startsWith("http")
+        ? "/api/admin/auth/login"
+        : "https://unispacex.vercel.app/api/admin/auth/login";
 
-      const data = await res.json();
+      const payload = JSON.stringify({ email: email.trim(), password: password.trim() });
+      const reqHeaders = {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      };
+
+      let res: Response;
+      try {
+        res = await fetch(primaryUrl, {
+          method: "POST",
+          headers: reqHeaders,
+          body: payload,
+        });
+      } catch (primaryErr) {
+        console.warn(`Primary login failed on ${primaryUrl}, trying fallback ${fallbackUrl}:`, primaryErr);
+        res = await fetch(fallbackUrl, {
+          method: "POST",
+          headers: reqHeaders,
+          body: payload,
+        });
+      }
+
+      let data: any = {};
+      try {
+        data = await res.json();
+      } catch {
+        const text = await res.text().catch(() => "");
+        return { success: false, error: text || `Server returned HTTP ${res.status}` };
+      }
 
       if (!res.ok || !data.success) {
         return { success: false, error: data.error || "Authentication failed" };

@@ -8,6 +8,7 @@ import com.example.data.local.UserSessionEntity
 import com.example.data.service.FirestoreStudentVerificationService
 import com.example.data.sync.RoomToFirestoreSyncUtility
 import com.example.data.sync.SyncSummary
+import com.example.data.sync.AdminSyncBridge
 import com.example.model.AppSettings
 import com.example.model.ApplicationStatus
 import com.example.model.Business
@@ -1937,6 +1938,170 @@ class UniSpaceViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Candidate Role Selection (After Successful Student Verification Approval):
+     * The verified candidate can choose to operate as either a verified STUDENT or a campus SELLER.
+     * All role changes, storefront details, and contact information are updated lively
+     * to the Admin App via AdminSyncBridge.
+     */
+    fun selectCandidateRole(role: UserRole, businessName: String = "", whatsappNumber: String = "") {
+        val state = _uiState.value
+        val targetStudentName = state.userProfile.name
+        val effectiveEmail = state.userProfile.collegeEmail ?: state.loggedInEmail
+
+        if (role == UserRole.SELLER) {
+            val bizName = businessName.ifBlank {
+                state.businesses.firstOrNull { it.ownerName == targetStudentName }?.name ?: "${targetStudentName}'s Venture"
+            }
+            val whatsapp = whatsappNumber.ifBlank {
+                state.userProfile.sellerWhatsappNumber ?: "+91 98765 43210"
+            }
+
+            val newBadges = (state.userProfile.badges + listOf(
+                VerificationType.STUDENT_VERIFIED,
+                VerificationType.BUSINESS_VERIFIED,
+                VerificationType.TRUSTED_SELLER
+            )).distinct()
+
+            val updatedProfile = state.userProfile.copy(
+                badges = newBadges,
+                isSellerVerified = true,
+                isSheerIdVerified = true,
+                sellerWhatsappNumber = whatsapp,
+                sellerGovtIdType = "STUDENT_VERIFIED_IDENTITY",
+                roleTitle = "Founder · $bizName"
+            )
+
+            val bizId = "biz-${targetStudentName.hashCode()}"
+            val existingBiz = state.businesses.firstOrNull { it.ownerName == targetStudentName }
+            val updatedBusinesses = if (existingBiz != null) {
+                state.businesses.map {
+                    if (it.ownerName == targetStudentName) it.copy(name = bizName, about = "WhatsApp: $whatsapp") else it
+                }
+            } else {
+                listOf(
+                    Business(
+                        id = bizId,
+                        name = bizName,
+                        ownerName = targetStudentName,
+                        college = state.userProfile.college,
+                        category = "Ventures",
+                        rating = 5.0,
+                        reviewCount = 0,
+                        badges = listOf(VerificationType.BUSINESS_VERIFIED, VerificationType.TRUSTED_SELLER),
+                        tagline = "Verified student venture",
+                        about = "Official store for $bizName. WhatsApp: $whatsapp",
+                        completedOrders = 0,
+                        responseRate = 100,
+                        servicesOffered = emptyList(),
+                        productsOffered = emptyList(),
+                        portfolio = emptyList(),
+                        reviews = emptyList()
+                    )
+                ) + state.businesses
+            }
+
+            val notif = UiNotification(
+                id = "role-${System.currentTimeMillis()}",
+                title = "🛍️ Campus Seller Mode Activated",
+                description = "Student verification approved! Store '$bizName' is live and synced with Admin!",
+                time = "Just now"
+            )
+
+            _uiState.update {
+                it.copy(
+                    currentUserRole = UserRole.SELLER,
+                    userProfile = updatedProfile,
+                    businesses = updatedBusinesses,
+                    notifications = listOf(notif) + it.notifications,
+                    authStatusMessage = "🌟 Activated Campus Seller Orbit: $bizName is live! ✓"
+                )
+            }
+
+            viewModelScope.launch {
+                syncUtility?.let { util ->
+                    util.saveAndSyncProfile(updatedProfile)
+                    util.db.userSessionDao().saveSession(
+                        UserSessionEntity(
+                            id = "active_session",
+                            isLoggedIn = true,
+                            email = effectiveEmail,
+                            name = updatedProfile.name,
+                            role = UserRole.SELLER.name,
+                            college = updatedProfile.college,
+                            isGoogleConnected = state.isGoogleConnected,
+                            googleEmail = state.googleAccountEmail,
+                            googleName = state.googleAccountName,
+                            avatarUrl = updatedProfile.avatarUrl
+                        )
+                    )
+                }
+                try {
+                    AdminSyncBridge.syncRoleSelection(
+                        email = effectiveEmail,
+                        role = "SELLER",
+                        businessName = bizName,
+                        whatsappNumber = whatsapp
+                    )
+                } catch (e: Exception) {
+                    Log.w("UniSpaceViewModel", "AdminSyncBridge role sync error: ${e.message}")
+                }
+            }
+        } else {
+            // Student Mode
+            val newBadges = (state.userProfile.badges + listOf(VerificationType.STUDENT_VERIFIED)).distinct()
+            val updatedProfile = state.userProfile.copy(
+                badges = newBadges,
+                isSheerIdVerified = true,
+                roleTitle = "Verified Student Innovator"
+            )
+
+            val notif = UiNotification(
+                id = "role-${System.currentTimeMillis()}",
+                title = "🎓 Verified Student Mode Active",
+                description = "Operating as verified campus student. Full marketplace access unlocked!",
+                time = "Just now"
+            )
+
+            _uiState.update {
+                it.copy(
+                    currentUserRole = UserRole.STUDENT,
+                    userProfile = updatedProfile,
+                    notifications = listOf(notif) + it.notifications,
+                    authStatusMessage = "🎓 Activated Verified Student Orbit! ✓"
+                )
+            }
+
+            viewModelScope.launch {
+                syncUtility?.let { util ->
+                    util.saveAndSyncProfile(updatedProfile)
+                    util.db.userSessionDao().saveSession(
+                        UserSessionEntity(
+                            id = "active_session",
+                            isLoggedIn = true,
+                            email = effectiveEmail,
+                            name = updatedProfile.name,
+                            role = UserRole.STUDENT.name,
+                            college = updatedProfile.college,
+                            isGoogleConnected = state.isGoogleConnected,
+                            googleEmail = state.googleAccountEmail,
+                            googleName = state.googleAccountName,
+                            avatarUrl = updatedProfile.avatarUrl
+                        )
+                    )
+                }
+                try {
+                    AdminSyncBridge.syncRoleSelection(
+                        email = effectiveEmail,
+                        role = "STUDENT"
+                    )
+                } catch (e: Exception) {
+                    Log.w("UniSpaceViewModel", "AdminSyncBridge role sync error: ${e.message}")
+                }
+            }
+        }
+    }
+
     // ==========================================
     // 5. INTERACTIVE SKILL CONSTELLATION & ENDORSEMENTS
     // ==========================================
@@ -2128,10 +2293,33 @@ class UniSpaceViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
+            val prof = _uiState.value.userProfile
             try {
-                syncUtility?.saveAndSyncProfile(_uiState.value.userProfile)
+                syncUtility?.saveAndSyncProfile(prof)
             } catch (e: Exception) {
-                // Ignore sync error
+                // Ignore local sync error
+            }
+
+            try {
+                val email = prof.collegeEmail ?: _uiState.value.loggedInEmail
+                if (email.isNotBlank()) {
+                    val biz = _uiState.value.businesses.firstOrNull { it.ownerName == prof.name }
+                    com.example.data.sync.AdminSyncBridge.syncStudentOrSellerDetails(
+                        email = email,
+                        name = prof.name,
+                        college = prof.college,
+                        rollNumber = prof.rollNumber ?: "",
+                        department = prof.departmentYear ?: "",
+                        graduationYear = "2027",
+                        phone = prof.sellerWhatsappNumber ?: "",
+                        whatsappNumber = prof.sellerWhatsappNumber ?: "",
+                        businessName = biz?.name ?: "",
+                        bio = prof.bio,
+                        role = _uiState.value.currentUserRole.name
+                    )
+                }
+            } catch (e: Exception) {
+                Log.w("UniSpaceViewModel", "Admin sync details error: ${e.message}")
             }
         }
     }
@@ -2472,14 +2660,17 @@ class UniSpaceViewModel @Inject constructor(
                 val email = _uiState.value.loggedInEmail
                 if (email.isNotBlank()) {
                     try {
-                        val statusPair = com.example.data.sync.AdminSyncBridge.fetchVerificationStatus(email)
-                        if (statusPair != null) {
-                            val (studentStatus, sellerStatus) = statusPair
-                            val isStudentApproved = studentStatus.equals("APPROVED", ignoreCase = true)
-                            val isSellerApproved = sellerStatus.equals("APPROVED", ignoreCase = true)
+                        val candidateInfo = com.example.data.sync.AdminSyncBridge.fetchCandidateSyncInfo(email)
+                        if (candidateInfo != null) {
+                            val studentStatus = candidateInfo.studentStatus
+                            val sellerStatus = candidateInfo.sellerStatus
+                            val isStudentApproved = studentStatus.equals("APPROVED", ignoreCase = true) || studentStatus.equals("VERIFIED", ignoreCase = true)
+                            val isSellerApproved = sellerStatus.equals("APPROVED", ignoreCase = true) || candidateInfo.role.equals("SELLER", ignoreCase = true)
 
                             _uiState.update { current ->
                                 val curBadges = current.userProfile.badges.toMutableList()
+                                val wasStudentApproved = current.userProfile.isSheerIdVerified || curBadges.contains(VerificationType.STUDENT_VERIFIED)
+
                                 if (isStudentApproved && !curBadges.contains(VerificationType.STUDENT_VERIFIED)) {
                                     curBadges.add(VerificationType.STUDENT_VERIFIED)
                                 } else if (!isStudentApproved && studentStatus.equals("REJECTED", ignoreCase = true)) {
@@ -2495,6 +2686,9 @@ class UniSpaceViewModel @Inject constructor(
                                 val updatedProfile = current.userProfile.copy(
                                     isSheerIdVerified = isStudentApproved,
                                     isSellerVerified = isSellerApproved,
+                                    rollNumber = if (candidateInfo.rollNumber.isNotBlank()) candidateInfo.rollNumber else current.userProfile.rollNumber,
+                                    departmentYear = if (candidateInfo.department.isNotBlank()) candidateInfo.department else current.userProfile.departmentYear,
+                                    college = if (candidateInfo.college.isNotBlank()) candidateInfo.college else current.userProfile.college,
                                     badges = curBadges
                                 )
 
@@ -2508,9 +2702,27 @@ class UniSpaceViewModel @Inject constructor(
                                     }
                                 }
 
+                                val newNotifications = if (!wasStudentApproved && isStudentApproved) {
+                                    val approvalNotif = UiNotification(
+                                        id = "vappr-${System.currentTimeMillis()}",
+                                        title = "🎓 Student Verification Approved! ✓",
+                                        description = "Your student verification is approved. You can now operate as a Verified Student or Campus Seller!",
+                                        time = "Just now"
+                                    )
+                                    listOf(approvalNotif) + current.notifications
+                                } else current.notifications
+
+                                val remoteRole = try {
+                                    UserRole.valueOf(candidateInfo.role.uppercase())
+                                } catch (e: Exception) {
+                                    null
+                                }
+
                                 current.copy(
                                     userProfile = updatedProfile,
-                                    verificationRequests = updatedReqs
+                                    verificationRequests = updatedReqs,
+                                    notifications = newNotifications,
+                                    currentUserRole = remoteRole ?: current.currentUserRole
                                 )
                             }
                         }
