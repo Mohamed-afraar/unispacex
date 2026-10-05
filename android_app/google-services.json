@@ -1,0 +1,34 @@
+{
+  "project_info": {
+    "project_number": "1065073030130",
+    "project_id": "gen-lang-client-0084680343",
+    "storage_bucket": "gen-lang-client-0084680343.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1065073030130:android:38b1b0d28d8a41f0953d81",
+        "android_client_info": {
+          "package_name": "com.aistudio.unispace.usxapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1065073030130-2h1ilep1fp8oi7t9908ose3j4hfpmamr.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDD0tvSz9ceP1sooHQDk5V0vHa5GKhBCS8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,258 @@
+// Prisma schema for UNISpaceX Campus Marketplace
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                        String              @id @default(cuid())
+  name                      String
+  email                     String              @unique
+  passwordHash              String
+  role                      String              @default("STUDENT") // STUDENT, SELLER, ADMIN
+  collegeId                 String?
+  phone                     String?
+  avatarUrl                 String?
+  studentVerificationStatus String              @default("PENDING") // PENDING, APPROVED, REJECTED
+  isSuspended               Boolean             @default(false)
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
+
+  // Relationships
+  college             College?             @relation(fields: [collegeId], references: [id], onDelete: SetNull)
+  studentVerification StudentVerification?
+  sellerApplication   SellerApplication?
+  sellerProfile       SellerProfile?
+  products            Product[]
+  favorites           Favorite[]
+  reportsFiled        Report[]             @relation("UserReports")
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+
+  @@index([email])
+  @@index([role])
+  @@index([collegeId])
+}
+
+model College {
+  id        String   @id @default(cuid())
+  name      String
+  domain    String   @unique // e.g. "stanford.edu", "mit.edu", "saec.ac.in"
+  city      String
+  state     String
+  country   String   @default("USA")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  users                User[]
+  products             Product[]
+  studentVerifications StudentVerification[]
+
+  @@index([domain])
+}
+
+model StudentVerification {
+  id                 String    @id @default(cuid())
+  userId             String    @unique
+  collegeId          String?
+  studentIdNumber    String?
+  department         String?
+  graduationYear     String?
+  documentUrl        String?   // Secure private document ID / path
+  status             String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  provider           String    @default("campus_admin") // campus_admin, sheerid
+  verificationMethod String    @default("STUDENT_ID_AND_CAMPUS_DIRECTORY")
+  adminNotes         String?   // Reason for approval / rejection notes
+  reviewedAt         DateTime?
+  reviewedBy         String?   // Admin identifier who approved/rejected
+  verifiedAt         DateTime?
+  expiresAt          DateTime?
+  rawResponse        String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  college College? @relation(fields: [collegeId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+}
+
+model SellerApplication {
+  id                String    @id @default(cuid())
+  userId            String    @unique
+  fullName          String
+  collegeName       String
+  govtIdType        String    // DRIVER_LICENSE, PASSPORT, NATIONAL_ID, STUDENT_GOVT_ID
+  govtIdNumber      String
+  govtIdUrl         String?   // Secure private document ID / path
+  whatsappNumber    String
+  description       String
+  productCategories String    // Comma-separated or JSON
+  sampleImages      String?   // JSON string of sample URLs
+  status            String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  adminNotes        String?   // Reason for approval / rejection notes
+  reviewedAt        DateTime?
+  reviewedBy        String?   // Admin identifier who approved/rejected
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+model SellerProfile {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  displayName      String
+  bio              String?
+  whatsappNumber   String?
+  isWhatsappPublic Boolean  @default(false)
+  rating           Float    @default(5.0)
+  totalSales       Int      @default(0)
+  joinedDate       DateTime @default(now())
+  isVerifiedSeller Boolean  @default(true)
+  bannerUrl        String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Category {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  slug         String   @unique
+  description  String?
+  icon         String   @default("package") // Lucide icon name
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  products Product[]
+
+  @@index([slug])
+}
+
+model Product {
+  id              String   @id @default(cuid())
+  sellerId        String
+  name            String
+  slug            String   @unique
+  description     String
+  price           Float
+  categoryId      String
+  condition       String   @default("GOOD") // NEW, LIKE_NEW, GOOD, USED
+  status          String   @default("ACTIVE") // DRAFT, PENDING, ACTIVE, SOLD, REJECTED, EXPIRED
+  quantity        Int      @default(1)
+  collegeId       String?
+  campusLocation  String   @default("Campus Center")
+  whatsappContact String?
+  viewCount       Int      @default(0)
+  isFeatured      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  seller    User           @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  category  Category       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  college   College?       @relation(fields: [collegeId], references: [id], onDelete: SetNull)
+  images    ProductImage[]
+  favorites Favorite[]
+  reports   Report[]
+
+  @@index([categoryId])
+  @@index([collegeId])
+  @@index([status])
+  @@index([isFeatured])
+  @@index([price])
+}
+
+model ProductImage {
+  id           String  @id @default(cuid())
+  productId    String
+  url          String
+  thumbnailUrl String?
+  isPrimary    Boolean @default(false)
+  displayOrder Int     @default(0)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([userId])
+}
+
+model Report {
+  id          String    @id @default(cuid())
+  reporterId  String
+  productId   String
+  reason      String    // SCAM, FAKE_PRODUCT, INAPPROPRIATE_CONTENT, WRONG_INFO, SPAM, OTHER
+  description String
+  status      String    @default("PENDING") // PENDING, INVESTIGATING, RESOLVED, DISMISSED
+  adminNotes  String?
+  createdAt   DateTime  @default(now())
+  resolvedAt  DateTime?
+
+  reporter User    @relation("UserReports", fields: [reporterId], references: [id], onDelete: Cascade)
+  product  Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([productId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      String   @default("INFO") // VERIFICATION_APPROVED, SELLER_APPROVED, SELLER_REJECTED, PRODUCT_APPROVED, PRODUCT_SOLD, REPORT_UPDATE, SYSTEM_ANNOUNCEMENT
+  isRead    Boolean  @default(false)
+  linkUrl   String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+}
+
+model Announcement {
+  id        String    @id @default(cuid())
+  title     String
+  content   String
+  type      String    @default("INFO") // INFO, WARNING, SUCCESS
+  isActive  Boolean   @default(true)
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  adminId    String
+  action     String   // APPROVE_SELLER, REJECT_SELLER, SUSPEND_USER, DELETE_USER, FEATURE_PRODUCT, TAKE_DOWN_PRODUCT, RESOLVE_REPORT
+  targetType String   // USER, SELLER, PRODUCT, REPORT, CATEGORY
+  targetId   String
+  details    String?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  admin User @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+  @@index([action])
+}

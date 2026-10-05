@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 1. Glowing Orbital Ring (Elliptical Planetary Ring around Core) -->
+    <!-- Back segment of orbital ring -->
+    <path
+        android:pathData="M31,44 C38,36 68,44 77,56"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:startX="31"
+                android:startY="44"
+                android:endX="77"
+                android:endY="56"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#559333EA" />
+                <item android:offset="1.0" android:color="#7700F5FF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- 2. Cosmic Cross Beam (Upper-Left to Lower-Right leg of 'X') -->
+    <path
+        android:pathData="M34,36 L48,49 L60,61 L74,74"
+        android:strokeWidth="6.5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:startX="34"
+                android:startY="36"
+                android:endX="74"
+                android:endY="74"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FF7928CA" />
+                <item android:offset="0.5" android:color="#FF9333EA" />
+                <item android:offset="1.0" android:color="#FF4F46E5" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- 3. Lower Thruster Ion Trails (Ascending leg of 'X') -->
+    <path
+        android:pathData="M33,75 L45,63"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:startX="33"
+                android:startY="75"
+                android:endX="45"
+                android:endY="63"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FF0284C7" />
+                <item android:offset="1.0" android:color="#FF00F5FF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Ion Flame particles -->
+    <path
+        android:pathData="M29,79 L34,74"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:strokeColor="#8800F5FF"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M35,82 L38,78"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeColor="#AAFBBF24"
+        android:fillColor="#00000000" />
+
+    <!-- 4. Front segment of glowing orbital ring -->
+    <path
+        android:pathData="M77,56 C74,68 44,72 31,64"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:startX="77"
+                android:startY="56"
+                android:endX="31"
+                android:endY="64"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FF00F5FF" />
+                <item android:offset="1.0" android:color="#FF38BDF8" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- 5. Central Supersonic Rocket Fuselage (Completing the Ascending 'X' Blade) -->
+    <!-- Aerodynamic Rocket Body -->
+    <path
+        android:pathData="M46,62 L43,56 L55,42 L68,30 L70,32 L62,45 L48,64 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="43"
+                android:startY="64"
+                android:endX="70"
+                android:endY="30"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FF00D8F6" />
+                <item android:offset="0.5" android:color="#FF38BDF8" />
+                <item android:offset="1.0" android:color="#FFFFFFFF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Rocket Port / Starboard Delta Wings -->
+    <path
+        android:pathData="M45,59 L38,62 L46,51 Z"
+        android:fillColor="#FF2563EB" />
+    <path
+        android:pathData="M59,45 L62,38 L51,46 Z"
+        android:fillColor="#FF7C3AED" />
+
+    <!-- Rocket Cockpit Canopy (Amber Gold Glass) -->
+    <path
+        android:pathData="M58,40 L64,34 L62,38 Z"
+        android:fillColor="#FFF59E0B" />
+
+    <!-- 6. Central Campus Nexus Core (Golden Star Node) -->
+    <path
+        android:pathData="M54,50 L56.5,53 L60,54 L56.5,55 L54,58 L51.5,55 L48,54 L51.5,53 Z"
+        android:fillColor="#FFFFD166" />
+
+    <!-- 7. Apex North Star / Guiding Beacon (Top-Right of X) -->
+    <path
+        android:pathData="M76,21 L78,26 L83,28 L78,30 L76,35 L74,30 L69,28 L74,26 Z"
+        android:fillColor="#FFFFFFFF" />
+
+    <path
+        android:pathData="M76,24 L77.5,27 L80.5,28 L77.5,29 L76,32 L74.5,29 L71.5,28 L74.5,27 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:centerX="76"
+                android:centerY="28"
+                android:gradientRadius="4"
+                android:type="radial">
+                <item android:offset="0.0" android:color="#FFFFFFFF" />
+                <item android:offset="0.7" android:color="#FF00F5FF" />
+                <item android:offset="1.0" android:color="#0000F5FF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Micro constellation sparks -->
+    <path
+        android:pathData="M31,31 L32,33 L34,34 L32,35 L31,37 L30,35 L28,34 L30,33 Z"
+        android:fillColor="#8838BDF8" />
+    <path
+        android:pathData="M77,75 L78,76.5 L80,77 L78,77.5 L77,79 L76,77.5 L74,77 L76,76.5 Z"
+        android:fillColor="#AA7928CA" />
+</vector>

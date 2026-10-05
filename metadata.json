@@ -1,0 +1,6 @@
+{
+  "name": "UniSpaceX",
+  "description": "Discover. Sell. Collaborate. Grow. Your Campus. Your Space. Your Universe.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

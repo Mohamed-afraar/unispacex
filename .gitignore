@@ -1,0 +1,47 @@
+# Node / Next.js
+node_modules/
+.next/
+dist/
+.vercel/
+
+# Environment and Secrets
+.env
+.env*.local
+*.keystore
+*.jks
+my-upload-key.jks
+debug.keystore
+
+# Database
+prisma/dev.db
+prisma/dev.db-journal
+dev.db
+dev.db-journal
+
+# Gradle / Android
+.gradle/
+.kotlin/
+build/
+android_app/build/
+admin_android/build/
+local.properties
+/captures
+.externalNativeBuild
+.cxx
+*.iml
+.idea/
+
+# Binaries & APKs
+*.apk
+*.aab
+
+# Temp / Root Screenshots & Artifacts
+phone_*.png
+screen_*.png
+.agents/
+.aider-desk/
+.devin/
+
+# OS Files
+.DS_Store
+Thumbs.db
