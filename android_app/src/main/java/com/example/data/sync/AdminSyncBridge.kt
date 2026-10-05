@@ -20,8 +20,9 @@ import java.util.concurrent.TimeUnit
 object AdminSyncBridge {
     private const val TAG = "AdminSyncBridge"
 
-    // Primary Wi-Fi endpoint of the development workstation
-    private const val PRIMARY_HOST = "http://172.19.202.83:3000"
+    // Primary Cloud Production endpoint on Vercel
+    private const val CLOUD_HOST = "https://unispacex.vercel.app"
+    private const val WIFI_HOST = "http://172.19.202.83:3000"
     private const val EMULATOR_HOST = "http://10.0.2.2:3000"
     private const val LOCAL_HOST = "http://localhost:3000"
 
@@ -33,7 +34,7 @@ object AdminSyncBridge {
         .writeTimeout(8, TimeUnit.SECONDS)
         .build()
 
-    private val candidateHosts = listOf(PRIMARY_HOST, EMULATOR_HOST, LOCAL_HOST)
+    private val candidateHosts = listOf(CLOUD_HOST, WIFI_HOST, EMULATOR_HOST, LOCAL_HOST)
 
     private suspend fun postToBackend(payloadJson: String): Boolean = withContext(Dispatchers.IO) {
         val body = payloadJson.toRequestBody(JSON_MEDIA_TYPE)

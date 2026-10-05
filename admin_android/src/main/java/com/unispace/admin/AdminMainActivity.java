@@ -68,12 +68,19 @@ public class AdminMainActivity extends AppCompatActivity {
         }
     );
 
+    public static final String CLOUD_ADMIN_URL = "https://admin-app-mauve-eight.vercel.app";
+    public static final String LOCAL_WIFI_URL = "http://172.19.202.83:3001";
+
     private SharedPreferences getPrefs() {
         return getSharedPreferences("unispace_admin_prefs", Context.MODE_PRIVATE);
     }
 
     private String getTargetUrl() {
-        return getPrefs().getString("target_url", "http://localhost:3001");
+        String saved = getPrefs().getString("target_url", CLOUD_ADMIN_URL);
+        if (saved == null || saved.contains("localhost") || saved.isEmpty()) {
+            return CLOUD_ADMIN_URL;
+        }
+        return saved;
     }
 
     private void setTargetUrl(String url) {
@@ -204,8 +211,18 @@ public class AdminMainActivity extends AppCompatActivity {
     private void setupListeners() {
         swipeRefresh.setOnRefreshListener(() -> webView.reload());
 
-        btnRetryLocalhost.setOnClickListener(v -> loadUrl("http://localhost:3001"));
-        btnRetryWifi.setOnClickListener(v -> loadUrl("http://172.19.202.83:3001"));
+        btnRetryLocalhost.setText("Connect Cloud Vercel");
+        btnRetryLocalhost.setOnClickListener(v -> {
+            setTargetUrl(CLOUD_ADMIN_URL);
+            loadUrl(CLOUD_ADMIN_URL);
+        });
+
+        btnRetryWifi.setText("Connect Local Dev (Wi-Fi)");
+        btnRetryWifi.setOnClickListener(v -> {
+            setTargetUrl(LOCAL_WIFI_URL);
+            loadUrl(LOCAL_WIFI_URL);
+        });
+
         btnCustomUrl.setOnClickListener(v -> showCustomUrlDialog());
     }
 

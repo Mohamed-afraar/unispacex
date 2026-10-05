@@ -63,7 +63,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
             android:backgroundTint="@color/primary_indigo"
-            android:text="Connect via USB (localhost:3001)"
+            android:text="Connect Cloud Vercel (admin-app-mauve-eight.vercel.app)"
             android:textColor="@color/text_white" />
 
         <Button
@@ -72,7 +72,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:backgroundTint="#1F2937"
-            android:text="Connect via Wi-Fi (172.19.202.83:3001)"
+            android:text="Connect Local Dev (172.19.202.83:3001)"
             android:textColor="@color/text_white" />
 
         <Button

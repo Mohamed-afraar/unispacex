@@ -45,3 +45,5 @@ screen_*.png
 # OS Files
 .DS_Store
 Thumbs.db
+
+.vercel
