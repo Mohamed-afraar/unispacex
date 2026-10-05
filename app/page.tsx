@@ -21,41 +21,54 @@ import {
   Ticket,
 } from "lucide-react";
 
-export const revalidate = 60; // ISR cache 60s
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const [featuredProducts, categories, collegesCount, usersCount] = await Promise.all([
-    prisma.product.findMany({
-      where: { status: "ACTIVE", isFeatured: true },
-      take: 6,
-      orderBy: { createdAt: "desc" },
-      include: {
-        images: true,
-        category: true,
-        college: true,
-        seller: {
-          select: {
-            id: true,
-            name: true,
-            avatarUrl: true,
-            sellerProfile: true,
+  let featuredProducts: any[] = [];
+  let categories: any[] = [];
+  let collegesCount = 0;
+  let usersCount = 0;
+
+  try {
+    const data = await Promise.all([
+      prisma.product.findMany({
+        where: { status: "ACTIVE", isFeatured: true },
+        take: 6,
+        orderBy: { createdAt: "desc" },
+        include: {
+          images: true,
+          category: true,
+          college: true,
+          seller: {
+            select: {
+              id: true,
+              name: true,
+              avatarUrl: true,
+              sellerProfile: true,
+            },
           },
         },
-      },
-    }),
-    prisma.category.findMany({
-      where: { isActive: true },
-      orderBy: { displayOrder: "asc" },
-      take: 8,
-      include: {
-        _count: {
-          select: { products: { where: { status: "ACTIVE" } } },
+      }),
+      prisma.category.findMany({
+        where: { isActive: true },
+        orderBy: { displayOrder: "asc" },
+        take: 8,
+        include: {
+          _count: {
+            select: { products: { where: { status: "ACTIVE" } } },
+          },
         },
-      },
-    }),
-    prisma.college.count({ where: { isActive: true } }),
-    prisma.user.count(),
-  ]);
+      }),
+      prisma.college.count({ where: { isActive: true } }),
+      prisma.user.count(),
+    ]);
+    featuredProducts = data[0];
+    categories = data[1];
+    collegesCount = data[2];
+    usersCount = data[3];
+  } catch (err) {
+    console.warn("Prisma query skipped during build/static-prerender:", err);
+  }
 
   const categoryIcons: Record<string, React.ReactNode> = {
     electronics: <Laptop className="w-5 h-5 text-brand-600" />,
