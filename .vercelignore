@@ -1,0 +1,24 @@
+# Vercel Deployment Exclusions
+android_app/
+admin_android/
+gradle/
+gradlew*
+*.gradle*
+admin-app/
+*.apk
+*.aab
+*.jks
+*.keystore
+phone_*.png
+screen_*.png
+.agents/
+.aider-desk/
+.devin/
+.git/
+node_modules/
+.next/
+dist/
+build/
+prisma/dev.db
+prisma/dev.db-journal
+dev.db

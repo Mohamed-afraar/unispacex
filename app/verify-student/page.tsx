@@ -263,7 +263,7 @@ export default function VerifyStudentPage() {
                     Verification Under Administrator Review (Pending)
                   </h3>
                   <button
-                    onClick={fetchStatus}
+                    onClick={() => fetchStatus(true)}
                     className="p-1 text-amber-700 hover:bg-amber-100 rounded-lg transition"
                     title="Refresh status"
                   >

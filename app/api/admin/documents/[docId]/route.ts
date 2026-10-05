@@ -28,7 +28,7 @@ export async function GET(
     }
 
     // Stream the binary document with privacy and anti-sniff headers
-    return new NextResponse(doc.buffer, {
+    return new NextResponse(new Uint8Array(doc.buffer), {
       status: 200,
       headers: {
         "Content-Type": doc.mimeType,
